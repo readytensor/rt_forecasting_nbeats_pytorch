@@ -175,7 +175,10 @@ class NBeatsNet(nn.Module):
                     torch.tensor(x_test, dtype=torch.float).to(self.device)
                 )
                 test_loss = self._loss(
-                    forecast, squeeze_last_dim(torch.tensor(y_test, dtype=torch.float))
+                    forecast,
+                    squeeze_last_dim(
+                        torch.tensor(y_test, dtype=torch.float).to(self.device)
+                    ),
                 ).item()
 
                 # Check for improvement considering min_delta
