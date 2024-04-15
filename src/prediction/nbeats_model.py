@@ -118,8 +118,16 @@ class NBeatsNet(nn.Module):
         self._opt = opt_
         self._loss = loss_
 
-    def fit(self, x_train, y_train, validation_data=None, epochs=10, batch_size=32):
-
+    def fit(
+        self,
+        x_train,
+        y_train,
+        validation_data=None,
+        epochs=10,
+        batch_size=32,
+        patience=3,
+        min_delta=1e-4,
+    ):
         def split(arr, size):
             arrays = []
             while len(arr) > size:
@@ -128,6 +136,9 @@ class NBeatsNet(nn.Module):
                 arr = arr[size:]
             arrays.append(arr)
             return arrays
+
+        best_val_loss = float("inf")
+        patience_counter = 0
 
         for epoch in range(epochs):
             x_train_list = split(x_train, batch_size)
@@ -167,22 +178,34 @@ class NBeatsNet(nn.Module):
                     forecast, squeeze_last_dim(torch.tensor(y_test, dtype=torch.float))
                 ).item()
 
+                # Check for improvement considering min_delta
+                if test_loss < best_val_loss - min_delta:
+                    best_val_loss = test_loss
+                    patience_counter = 0
+                else:
+                    patience_counter += 1
+
             num_samples = len(x_train_list)
             time_per_step = int(elapsed_time / num_samples * 1000)
-            print(f"Epoch {str(epoch + 1).zfill(len(str(epochs)))}/{epochs}")
+            print(f"Epoch {epoch+1}/{epochs}")
             print(
-                f"{num_samples}/{num_samples} [==============================] - "
-                f"{int(elapsed_time)}s {time_per_step}ms/step - "
+                f"{num_samples}/{num_samples} [==============================] - {int(elapsed_time)}s {time_per_step}ms/step - "
             )
             if test_loss is not None:
                 print(f"loss: {train_loss} - val_loss: {test_loss}")
             else:
                 print(f"loss: {train_loss}")
 
+            if patience_counter >= patience:
+                print(
+                    "Early stopping triggered due to no improvement in validation loss."
+                )
+                break
+
     def predict(self, x, return_backcast=False):
         self.eval()
         b, f = self(torch.tensor(x, dtype=torch.float).to(self.device))
-        b, f = b.detach().numpy(), f.detach().numpy()
+        b, f = b.detach().cpu().numpy(), f.detach().cpu().numpy()
         if len(x.shape) == 3:
             b = np.expand_dims(b, axis=-1)
             f = np.expand_dims(f, axis=-1)

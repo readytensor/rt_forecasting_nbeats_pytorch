@@ -178,15 +178,27 @@ class Forecaster:
         Args:
             data (pandas.DataFrame): The training data.
         """
+        print(data)
         X, y, E = self._get_X_y_and_E(data, is_train=True)
+        print(X.shape, "shape of x")
+        print(y.shape, "shape of y")
         loss_to_monitor = "loss" if validation_split is None else "val_loss"
         patience = get_patience_factor(X.shape[0])
+        X_val, y_val = None, None
+        if validation_split > 0:
+            val_size = int(validation_split * X.shape[1])
+            X_val = X[-val_size:, :, :]
+            y_val = y[-val_size:, :, :]
+            X = X[:-val_size, :, :]
+            y = y[:-val_size, :, :]
+
         history = self.model.fit(
             x_train=[X, E] if E is not None else X,
             y_train=y,
-            validation_data=None,
+            validation_data=(X_val, y_val),
             epochs=max_epochs,
             batch_size=self.batch_size,
+            patience=patience,
         )
         # recompile the model to reset the optimizer; otherwise re-training slows down
         return history
@@ -360,7 +372,6 @@ class Forecaster:
             for data in pred_loader:
                 X = data.to(device)
                 preds = self.model.predict(X).squeeze()
-                # preds = preds[:, -self.decode_len :]
                 all_preds.append(preds)
 
         preds = np.concatenate(all_preds, axis=0)
