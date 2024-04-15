@@ -1,0 +1,12 @@
+{
+  "encode_to_decode_ratio": 4,
+  "min_windows": 25,
+  "min_encode_len_ratio": 0.4,
+  "num_generic_stacks": 2,
+  "nb_blocks_per_stack": 2,
+  "thetas_dim_per_stack": 16,
+  "hidden_layer_units": 32,
+  "share_weights_in_stack": true,
+  "batch_size": 32,
+  "use_exogenous": true
+}
