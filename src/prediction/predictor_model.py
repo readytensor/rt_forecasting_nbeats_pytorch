@@ -178,7 +178,6 @@ class Forecaster:
         Args:
             data (pandas.DataFrame): The training data.
         """
-        print(data)
         X, y, E = self._get_X_y_and_E(data, is_train=True)
         print(X.shape, "shape of x")
         print(y.shape, "shape of y")
@@ -193,7 +192,7 @@ class Forecaster:
             y = y[:-val_size, :, :]
 
         history = self.model.fit(
-            x_train=[X, E] if E is not None else X,
+            x_train=X,
             y_train=y,
             validation_data=(X_val, y_val),
             epochs=max_epochs,
@@ -202,36 +201,6 @@ class Forecaster:
         )
         # recompile the model to reset the optimizer; otherwise re-training slows down
         return history
-
-    # def _get_X_and_y(self, data: np.ndarray, is_train: bool = True) -> np.ndarray:
-    #     """Extract X (historical target series), y (forecast window target)
-    #     When is_train is True, data contains both history and forecast windows.
-    #     When False, only history is contained.
-    #     """
-    #     N, T, D = data.shape
-    #     if D != self.feat_dim:
-    #         raise ValueError(
-    #             f"Training data expected to have {self.feat_dim} feature dim. "
-    #             f"Found {D}"
-    #         )
-    #     if is_train:
-    #         if T != self.encode_len + self.decode_len:
-    #             raise ValueError(
-    #                 f"Training data expected to have {self.encode_len + self.decode_len}"
-    #                 f" length on axis 1. Found length {T}"
-    #             )
-    #         X = data[:, : self.encode_len, :]
-    #         y = data[:, self.encode_len :, 0]
-    #     else:
-    #         # for inference
-    #         if T < self.encode_len:
-    #             raise ValueError(
-    #                 f"Inference data length expected to be >= {self.encode_len}"
-    #                 f" on axis 1. Found length {T}"
-    #             )
-    #         X = data[:, -self.encode_len :, :]
-    #         y = None
-    #     return X, y
 
     def fit(
         self,
@@ -263,101 +232,6 @@ class Forecaster:
         )
         self._is_trained = True
         return history
-
-    # def fit(self, train_data, valid_data, max_epochs=250, verbose=1):
-    #     train_X, train_y = self._get_X_and_y(train_data, is_train=True)
-    #     if valid_data is not None:
-    #         valid_X, valid_y = self._get_X_and_y(valid_data, is_train=True)
-    #     else:
-    #         valid_X, valid_y = None, None
-
-    #     self.batch_size = max(1, min(train_X.shape[0] // 8, 256))
-    #     print(f"batch_size = {self.batch_size}")
-
-    #     patience = get_patience_factor(train_X.shape[0])
-    #     print(f"{patience=}")
-
-    #     train_X, train_y = torch.FloatTensor(train_X), torch.FloatTensor(train_y)
-    #     train_dataset = CustomDataset(train_X, train_y)
-    #     train_loader = DataLoader(
-    #         dataset=train_dataset, batch_size=int(self.batch_size), shuffle=True
-    #     )
-
-    #     if valid_X is not None and valid_y is not None:
-    #         valid_X, valid_y = torch.FloatTensor(valid_X), torch.FloatTensor(valid_y)
-    #         valid_dataset = CustomDataset(valid_X, valid_y)
-    #         valid_loader = DataLoader(
-    #             dataset=valid_dataset, batch_size=int(self.batch_size), shuffle=True
-    #         )
-    #     else:
-    #         valid_loader = None
-
-    #     losses = self._run_training(
-    #         train_loader,
-    #         valid_loader,
-    #         max_epochs,
-    #         use_early_stopping=True,
-    #         patience=patience,
-    #         verbose=verbose,
-    #     )
-    #     return losses
-
-    # def _run_training(
-    #     self,
-    #     train_loader,
-    #     valid_loader,
-    #     max_epochs,
-    #     use_early_stopping=True,
-    #     patience=10,
-    #     verbose=1,
-    # ):
-
-    #     best_loss = 1e7
-    #     losses = []
-    #     min_epochs = 10
-    #     for epoch in range(max_epochs):
-    #         self.net.train()
-    #         for data in train_loader:
-    #             X, y = data[0].to(device), data[1].to(device)
-    #             # Feed Forward
-    #             preds = self.net(X)
-    #             # Loss Calculation
-    #             loss = self.criterion(y, preds)
-    #             # Clear the gradient buffer (we don't want to accumulate gradients)
-    #             self.optimizer.zero_grad()
-    #             # Backpropagation
-    #             loss.backward()
-    #             # Weight Update: w <-- w - lr * gradient
-    #             self.optimizer.step()
-
-    #         current_loss = loss.item()
-
-    #         if use_early_stopping:
-    #             # Early stopping
-    #             if valid_loader is not None:
-    #                 current_loss = get_loss(
-    #                     self.net, device, valid_loader, self.criterion
-    #                 )
-    #             losses.append({"epoch": epoch, "loss": current_loss})
-    #             if current_loss < best_loss:
-    #                 trigger_times = 0
-    #                 best_loss = current_loss
-    #             else:
-    #                 trigger_times += 1
-    #                 if trigger_times >= patience and epoch >= min_epochs:
-    #                     if verbose == 1:
-    #                         print(f"Early stopping after {epoch=}!")
-    #                     return losses
-    #         else:
-    #             losses.append({"epoch": epoch, "loss": current_loss})
-    #         # Show progress
-    #         if verbose == 1:
-    #             if epoch % self.print_period == 0 or epoch == max_epochs - 1:
-    #                 print(
-    #                     f"Epoch: {epoch+1}/{max_epochs}, loss: {np.round(current_loss, 5)}"
-    #                 )
-
-    #     return losses
 
     def predict(self, data):
         X = self._get_X_y_and_E(data, is_train=False)[0]
